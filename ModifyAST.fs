@@ -1,18 +1,27 @@
-module ZFS_Tools.ASTLens
+module ModifyAST
 
 module AST   = FStar.Parser.AST
 module Id    = FStar.Ident
 module Const = FStar.Const
+module Range = FStar.Range
 
 type Comment = string * FStar.Range.range
 type AST     = AST.modul * list<Comment>
 
 type constdata =
-    | CD_bool      of bool
-    | CD_int       of string * option<(Const.signedness * Const.width)> (* When None, means "mathematical integer", i.e. Prims.int. *)
-    | CD_char      of char                                              (* unicode code point: char in F#, int in OCaml *)
-    | CD_string    of string                                            (* UTF-8 encoded *)
+    | CD_bool   of bool
+    | CD_int    of string * option<(Const.signedness * Const.width)> (* When None, means "mathematical integer", i.e. Prims.int. *)
+    | CD_char   of char                                              (* unicode code point: char in F#, int in OCaml *)
+    | CD_string of string                                            (* UTF-8 encoded *)
     | CD_invalid
+
+
+let update_range (s : string) (r : Range.range) : Range.range =
+    let n = String.length s + 2
+    let e = Range.end_of_range r
+    let l = Range.line_of_pos e
+    let c = Range.col_of_pos e + n
+    Range.mk_range (Range.file_of_range r) (Range.start_of_range r) (Range.mk_pos l c) 
 
 let modify_term' (newdata : constdata) (t : AST.term') : AST.term' =
     match t with
@@ -30,7 +39,7 @@ let modify_term' (newdata : constdata) (t : AST.term') : AST.term' =
         | _                        -> failwith "TODO"
     | AST.Const(Const.Const_string(_,r)) ->
         match newdata with
-        | CD_string(s)             -> AST.Const(Const.Const_string(s,r))
+        | CD_string(s)             -> AST.Const(Const.Const_string(s, update_range s r))
         | _                        -> failwith "TODO"
     | _                                  -> failwith "TODO"
 

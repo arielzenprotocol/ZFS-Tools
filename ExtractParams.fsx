@@ -7,34 +7,8 @@ module AST = FStar.Parser.AST
 module Id = FStar.Ident
 module Const = FStar.Const
 
-let FILENAME = "../../zfc/contracts/Bet/Bet.fst"
 
-//for arg in fsi.CommandLineArgs do
-//    printfn "%s" arg
-
-type constdata =
-    | CD_bool      of bool
-    | CD_int       of string * option<(Const.signedness * Const.width)> (* When None, means "mathematical integer", i.e. Prims.int. *)
-    | CD_char      of char (* unicode code point: char in F#, int in OCaml *)
-    | CD_string    of string (* UTF-8 encoded *)
-    | CD_invalid
-
-//type sconst =
-//  | Const_effect
-//  | Const_unit
-//  | Const_bool        of bool
-//  | Const_int         of string * option<(signedness * width)> (* When None, means "mathematical integer", i.e. Prims.int. *)
-//  | Const_char        of char (* unicode code point: char in F#, int in OCaml *)
-//  | Const_float       of double
-//  | Const_bytearray   of array<byte> * Range.range
-//  | Const_string      of string * Range.range                (* UTF-8 encoded *)
-//  | Const_range_of                                           (* `range_of` primitive *)
-//  | Const_set_range_of                                       (* `set_range_of` primitive *)
-//  | Const_range       of Range.range                         (* not denotable by the programmer *)
-//  | Const_reify                                              (* a coercion from a computation to a Tot term *)
-//  | Const_reflect     of Ident.lid                           (* a coercion from a Tot term to an l-computation type *)
-
-let getDeclerations ast =
+let getDeclerations (ast : ASTUtils.AST) : list<AST.decl> =
     match fst ast with
     | AST.Module(_, decls)       -> decls
     | AST.Interface(_, decls, _) -> decls
@@ -63,12 +37,12 @@ let filterConstants : list<AST.pattern' * AST.term'> -> list<Id.ident * Const.sc
 let getIdText : list<Id.ident * Const.sconst> -> list<string * Const.sconst> =
     List.map ( fun (id, e) -> (id.idText, e) )
 
-let cvtConstData : Const.sconst -> constdata =
+let cvtConstData : Const.sconst -> ModifyAST.constdata =
     function
-    | Const.Const_bool(b)         -> CD_bool(b)
-    | Const.Const_int(s,t)        -> CD_int(s,t)
-    | Const.Const_char(c)         -> CD_char(c)
-    | Const.Const_string(s,_)     -> CD_string(s)
+    | Const.Const_bool(b)         -> ModifyAST.CD_bool(b)
+    | Const.Const_int(s,t)        -> ModifyAST.CD_int(s,t)
+    | Const.Const_char(c)         -> ModifyAST.CD_char(c)
+    | Const.Const_string(s,_)     -> ModifyAST.CD_string(s)
     | Const.Const_unit
     | Const.Const_float(_)
     | Const.Const_bytearray(_,_)
@@ -77,18 +51,34 @@ let cvtConstData : Const.sconst -> constdata =
     | Const.Const_set_range_of
     | Const.Const_range(_)
     | Const.Const_reify
-    | Const.Const_reflect(_)      -> CD_invalid
+    | Const.Const_reflect(_)      -> ModifyAST.CD_invalid
 
-let cvtConstDatas : list<string * Const.sconst> -> list<string * constdata> =
-    List.map ( fun (s, e) -> (s, cvtConstData e) ) 
+let cvtConstDatas : list<string * Const.sconst> -> list<string * ModifyAST.constdata> =
+    List.map ( fun (s, e) -> (s, cvtConstData e) )
 
-let ast = ASTUtils.parse_file FILENAME
-
-printfn "%A" (
+let extractData (ast : ASTUtils.AST) : list<string * ModifyAST.constdata> =
     ast |> getDeclerations
         |> filterTLLs
         |> filterSingletons
         |> filterConstants
-        //|> getIdText
-        //|> cvtConstDatas
-    )
+        |> getIdText
+        |> cvtConstDatas
+
+
+(*
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+*)
+
+let SRC_FILENAME = "../../zfc/contracts/Bet/Bet.fst"
+let DST_FILENAME = "Bet2.fst"
+
+//for arg in fsi.CommandLineArgs do
+//    printfn "%s" arg
+
+let ast = ASTUtils.parse_file SRC_FILENAME
+
+printfn "%A" (extractData ast)
+
+ModifyAST.modify_AST "ticker" (ModifyAST.CD_string "Intel") ast
+    |> ASTUtils.write_ast_to_file DST_FILENAME
