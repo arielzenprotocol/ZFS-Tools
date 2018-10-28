@@ -68,8 +68,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="ModifyAST.fs" />
     <Compile Include="ASTUtils.fs" />
     <Compile Include="Hints.fs" />
+    <Compile Include="WitheredAST.fs" />
+    <None Include="CompareAST.fsx" />
+    <None Include="ExtractParams.fsx" />
     <None Include="paket.references" />
     <None Include="test.fsx" />
   </ItemGroup>
